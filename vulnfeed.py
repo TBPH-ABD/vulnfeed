@@ -105,7 +105,11 @@ def query_nvd(params: dict, api_key: str | None, timeout: float,
                 write_cache(query, payload)
                 return payload
         except urllib.error.HTTPError as exc:
-            if exc.code in (403, 429) and attempt < 2:
+            # An HTTPError holds an open response buffer; release it before
+            # retrying or the interpreter leaks a temporary file per attempt.
+            retryable = exc.code in (403, 429) and attempt < 2
+            if retryable:
+                exc.close()
                 wait = 6 * (attempt + 1)
                 print(f"  Rate limited by NVD; retrying in {wait}s...",
                       file=sys.stderr)
@@ -286,7 +290,8 @@ def main(argv: list[str] | None = None) -> int:
     except ValueError as exc:
         parser.error(str(exc))
     except urllib.error.HTTPError as exc:
-        print(f"NVD API error {exc.code}: {exc.reason}", file=sys.stderr)
+        with exc:  # release the response buffer
+            print(f"NVD API error {exc.code}: {exc.reason}", file=sys.stderr)
         return 1
     except (urllib.error.URLError, OSError, RuntimeError) as exc:
         print(f"Could not reach the NVD API: {exc}", file=sys.stderr)

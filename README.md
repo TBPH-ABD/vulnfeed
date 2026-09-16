@@ -93,6 +93,23 @@ fail a pipeline that depends on a vulnerable component:
   run: python3 vulnfeed.py --cpe "$CPE_NAME" -s HIGH --days 90
 ```
 
+## Tests
+
+50 tests, 95% line coverage. No dependencies, and **no test contacts a
+real external service** — network-facing code is exercised against local fake
+servers bound to an ephemeral port.
+
+```bash
+# Run the suite
+python3 -m unittest discover -s tests -v
+
+# Fail on any leaked socket, file, or database connection
+python3 -W error::ResourceWarning -m unittest discover -s tests
+```
+
+CI runs the suite on Python 3.10–3.13 on every push, plus a coverage gate and a
+3.10 syntax check. See [.github/workflows/tests.yml](.github/workflows/tests.yml).
+
 ## License
 
 MIT — see [LICENSE](LICENSE). Vulnerability data is provided by the NVD.
